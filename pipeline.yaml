@@ -1,0 +1,34 @@
+triggers:
+- manual
+stages:
+- stage: Terraform_Plan
+  jobs:
+  - job: Plan
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: AzureLogin@1
+      displayName: Login to Azure
+      inputs:
+        azureSubscription: '$(System.ServiceConnections.AzureSubscription.SubscriptionName)'
+        serviceConnectionName: '$(System.ServiceConnections.AzureSubscription.ConnectionName)'
+        # Add the following command to actually login to Azure
+        command: login
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: 'latest'
+    - script: |
+        terraform init
+        terraform plan -var-file=./variables.tfvars
+    - task: PublishTerraformOutput@1
+      displayName: Publish Terraform Output
+      inputs:
+        filePatterns: '**/*.tfplan'
+        targetPath: '$(System.DefaultWorkingDirectory)/terraform.output'
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifacts
+      condition: always()
+      inputs:
+        pathtoPublish: '$(System.DefaultWorkingDirectory)/terraform.output'
+        artifactName: 'terraform-plan'
